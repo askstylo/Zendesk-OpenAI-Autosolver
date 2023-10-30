@@ -3,18 +3,19 @@ require("dotenv").config();
 
 // Native and third-party modules
 const express = require("express");
-const crypto = require("crypto");
+const crypto = require("node:crypto");
 const axios = require("axios"); // For making HTTP requests
 const OpenAIApi = require("openai");
 const tiktoken = require("tiktoken");
 
 // Constants
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-// This signing secret is the one ZD always uses when testing webhooks. It's not the same as the one you'd use in production.
+// This signing secret is the one ZD always uses when testing webhooks before creation. It's not the same as the one you'd use in production.
 const TEST_SIGNING_SECRET = "dGhpc19zZWNyZXRfaXNfZm9yX3Rlc3Rpbmdfb25seQ==";
 const SIGNING_SECRET_ALGORITHM = "sha256";
+
 const ZD_AUTH = Buffer.from(
-  `${process.env.ZD_USERNAME}/token:${process.env.ZD_API_KEY}`
+  `${process.env.ZD_EMAIL}/token:${process.env.ZD_API_KEY}`
 ).toString("base64");
 
 const app = express();
@@ -23,13 +24,8 @@ const openai = new OpenAIApi({
 });
 
 function isValidSignature(signature, body, timestamp) {
-
-  const hmac = crypto.createHmac(
-    SIGNING_SECRET_ALGORITHM,
-    process.env.ZD_SIGNING_SECRET
-  );
+  const hmac = crypto.createHmac(SIGNING_SECRET_ALGORITHM, TEST_SIGNING_SECRET);
   const sig = hmac.update(timestamp + body).digest("base64");
-    console.log(sig)
   return Buffer.compare(Buffer.from(signature), Buffer.from(sig)) === 0;
 }
 
@@ -47,14 +43,16 @@ function numTokensFromString(message) {
 }
 
 function autoSolveThankyou(ticket_id) {
+  // if you don't feel comfortable letting this solve tickets for you. Have it just tag them for a quick review from a team member!
+
   const data = {
     ticket: {
       comment: {
-        body: "This ticket was automatically closed as we've detected that it's just a thank you.",
+        body: "This ticket was automatically solved as we've detected that the conversation is done",
         public: false,
       },
       status: "solved",
-      tags: ["auto_solve"],
+      tags: ["auto_solved"],
     },
   };
 
@@ -67,10 +65,11 @@ function autoSolveThankyou(ticket_id) {
     },
     data: JSON.stringify(data),
   };
+  console.log(zd_config);
 
   axios(zd_config)
-    .then((response) => console.log(JSON.stringify(response.data)))
-    .catch((error) => console.error("Error updating ticket:", error.message));
+    // .then((response) => console.log(JSON.stringify(response.data)))
+    .catch((error) => console.error("Error updating ticket:", error));
 }
 
 // Middleware for raw body parsing
@@ -82,7 +81,6 @@ app.post("/thanks", async (req, res) => {
   const signature = req.headers["x-zendesk-webhook-signature"];
   const timestamp = req.headers["x-zendesk-webhook-signature-timestamp"];
   const body = req.rawBody;
-  console.log(signature, timestamp, body);
 
   if (!isValidSignature(signature, body, timestamp)) {
     console.log("HMAC signature is invalid");
@@ -90,9 +88,8 @@ app.post("/thanks", async (req, res) => {
   }
 
   const message = req.body.message;
-  console.log(message);
   res.json({ status: 200 });
-  // Check for basic thank you messages
+  // Check for basic thank you messages. This can easily be expanded on.
   if (
     ["thank you", "thanks", "appreciate it"].includes(
       message.trim().toLowerCase()
@@ -101,7 +98,7 @@ app.post("/thanks", async (req, res) => {
     autoSolveThankyou(req.body.ticket_id);
   }
 
-  // We can assume that the message is not a basic thank you message if it's longer than 300 tokens
+  // We can assume that the message is not a basic thank you message if it's longer than 300 tokens. You could trim this down even further if you'd like
   if (numTokensFromString(message) > 300) {
   }
 
@@ -112,21 +109,14 @@ app.post("/thanks", async (req, res) => {
         {
           role: "system",
           content: `
-        Analyze the below message if the user is only expressing gratitude (e.g., "thank you", "merci", "gracias", etc.) or if there's an additional action item or query in the message for the individual that is being sent this message. Return true if the message is solely an expression of gratitude, and false otherwise.
+          Determine if a given message:
 
-      Examples:
+          1. Expresses only gratitude, such as "thank you", "merci", or "gracias".
+          2. Is a statement signifying the conclusion of the conversation, even if it doesn't express gratitude.
 
-    Message: "Thank you very much!" (English)
-    Response: true
+          If the message meets either of the above criteria, return **true**. Otherwise, return **false**.
 
-    Message: "Gracias, ¿cuánto cuestan los pepinillos?" (Spanish)
-    Response: false
-
-    Message: "Merci, c'est tout." (French)
-    Response: true
-
-    Here is the message: ${message}
-
+          Analyze the following message: ${message}
 `,
         },
       ],
