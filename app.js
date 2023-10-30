@@ -10,7 +10,7 @@ const tiktoken = require("tiktoken");
 
 // Constants
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-// This signing secret is the one ZD always uses when testing webhooks before creation. It's not the same as the one you'd use in production.
+// This signing secret is the one ZD always uses when testing webhooks before creation. It's not the same as the one you'd use in production. Replace this with ZD_SIGNING_SECRET from your .env file after activating the webhook.
 const TEST_SIGNING_SECRET = "dGhpc19zZWNyZXRfaXNfZm9yX3Rlc3Rpbmdfb25seQ==";
 const SIGNING_SECRET_ALGORITHM = "sha256";
 

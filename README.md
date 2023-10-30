@@ -1,10 +1,10 @@
-# ZD-AI User Group - Gratitude project 
+# Zendesk - AI User Group - Gratitude project 
 
 This API is designed to automatically handle and respond to Zendesk tickets, particularly those that are simple "thank you" messages.
 
 ## Overview
 
-When the webhook endpoint (/thanks) receives a POST request, it first verifies the HMAC signature provided by Zendesk to ensure the validity of the request. If the incoming message is a simple "thank you" phrase, it automatically closes the ticket. For more complex messages, it utilizes the OpenAI API to determine whether the message is solely an expression of gratitude or if there's an additional action/query. If it's solely an expression of gratitude, the ticket is auto-closed.
+When the webhook endpoint (/thanks) receives a POST request from a Zendesk Webhook, it first verifies the HMAC signature provided by Zendesk to ensure the validity of the request. If the incoming message is a simple "thank you" phrase, it automatically closes the ticket. For more complex messages, it utilizes the OpenAI API to determine whether the message is solely an expression of gratitude or if there's an additional action/query. If it's solely an expression of gratitude, the ticket is auto-closed.
 
 ## Installation
 
@@ -15,6 +15,7 @@ When the webhook endpoint (/thanks) receives a POST request, it first verifies t
    - `ZD_EMAIL`: Your Zendesk email.
    - `ZD_API_KEY`: Your Zendesk API key.
    - `ZD_SUBDOMAIN`: Your Zendesk subdomain.
+   - `ZD_SIGNING_SECRET`: The value of your webhook's signing secret. Replace the `TEST_SIGNING_SECRET` with this one once you've activated the Zendesk webhook. [Verifiying Webhooks](https://developer.zendesk.com/documentation/webhooks/verifying/)
 4. Start the server by running `npm start`.
 
 ## Usage
