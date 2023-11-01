@@ -18,6 +18,11 @@ When the webhook endpoint (/thanks) receives a POST request from a Zendesk Webho
    - `ZD_SIGNING_SECRET`: The value of your webhook's signing secret. Replace the `TEST_SIGNING_SECRET` with this one once you've activated the Zendesk webhook. [Verifiying Webhooks](https://developer.zendesk.com/documentation/webhooks/verifying/)
 4. Start the server by running `npm start`.
 
+## Spin up your own copy on Glitch
+1. [Remix your own copy](https://glitch.com/edit/#!/remix/oceanic-shade-plane?path=README.md%3A1%3A0)
+2. Copy the env.example into a env file and fill out all the values
+3. You're good to go!
+
 ## Usage
 
 1. Send a webhook request from your Zendesk account. The body should be formatted such as this:
