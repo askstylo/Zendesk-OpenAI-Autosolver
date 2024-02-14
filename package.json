@@ -1,6 +1,6 @@
 {
-  "name": "zd-ai-thanks",
-  "version": "1.0.0",
+  "name": "zd-ai-autosolver",
+  "version": "1.0.1",
   "description": "A lightweight express backend for ZD",
   "main": "app.js",
   "scripts": {

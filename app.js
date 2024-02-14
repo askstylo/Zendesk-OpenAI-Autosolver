@@ -72,9 +72,104 @@ function autoSolveThankyou(ticket_id) {
     .catch((error) => console.error("Error updating ticket:", error));
 }
 
+function getTicketComments(ticketID){
+  const zd_config = {
+    method: "GET",
+    url: `https://${process.env.ZD_SUBDOMAIN}.zendesk.com/api/v2/tickets/${ticketID}/comments.json?include=users`,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${ZD_AUTH}`,
+    },
+  };
+  axios(zd_config)
+    .then((response) => {
+      const invalidChannels = ["voice", "chat", "native_messaging"];
+      if (!response.data.channel.includes(invalidChannels) && response.data.comments.length > 2) {
+        const comments = response.data.comments.filter(comment => comment.public);
+        const lastTwoComments = comments.slice(-2);
+        const users = response.data.users;
+        const result = lastTwoComments.map(comment => {
+          const user = users.find(user => user.id === comment.author_id);
+          return {
+            body: comment.body,
+            name: user.name,
+            role: user.role,
+          };
+        });
+        return result;
+      }
+    })
+    .catch((error) => console.error("Error getting ticket comments:", error));
+
+}
+
 // Middleware for raw body parsing
 app.use(express.json({ verify: storeRawBody }));
 app.use(express.json());
+
+app.post("/multi-message", async (req, res) => {
+  const signature = req.headers["x-zendesk-webhook-signature"];
+  const timestamp = req.headers["x-zendesk-webhook-signature-timestamp"];
+  const body = req.rawBody;
+
+  if (!isValidSignature(signature, body, timestamp)) {
+    console.log("HMAC signature is invalid");
+    return res.status(401).send("Invalid signature");
+  }
+
+  if (req.body.ticket_id) {
+    const ticket_id = req.body.ticket_id;
+    const comments = getTicketComments(ticket_id);
+    const prompt = `**Objective:** Assess whether the last two comments in a ticket signify a completed conversation. A conversation is deemed concluded if the final two comments adhere to all of the following conditions:
+
+1. **Gratitude Expression:** The comments contain expressions of gratitude, such as "thank you," "merci," or "gracias," without introducing new queries or requests.
+   
+2. **Conclusive Statement:** The comments include statements that indicate the end of the discussion, not necessarily expressing gratitude but clearly signaling closure.
+   
+3. **No Pending Actions or Queries:** Neither of the last two comments introduces new action items, tasks to be completed, or questions that require further interaction.
+
+**Non-completed Conversation Examples:**
+
+- Example 1:
+    - Agent (John): "Great, thanks for chatting. Have a great day!"
+    - End-user (Jane): "I have another question."
+    - *Reason:* New question introduced, indicating ongoing conversation.
+
+- Example 2:
+    - Agent (John): "I need to look into this further. I'll get back to you."
+    - End-user (Jane): "Ok, thanks."
+    - *Reason:* Indication of pending action, suggesting the conversation is not concluded.
+
+**Evaluation Instructions:**
+
+Analyze the provided messages to determine if they constitute a completed conversation based on the criteria above. If the messages satisfy all the listed conditions, return **true**. Otherwise, return **false**.
+
+**Messages to Analyze:** ${comments}`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: prompt,
+          },
+        ],
+      });
+      const result = response.choices[0].message.content.toLowerCase();
+      console.log(result);
+      if (result.includes("true")) {
+        autoSolveThankyou(req.body.ticket_id);
+      }
+      return;
+    } catch (error) {
+      console.error("Error calling OpenAI API:", error.message);
+    }
+  
+  }
+
+});
+
 
 // Webhook endpoint
 app.post("/thanks", async (req, res) => {
