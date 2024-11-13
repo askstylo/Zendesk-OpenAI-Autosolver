@@ -36,7 +36,7 @@ function storeRawBody(req, res, buf) {
 }
 
 function numTokensFromString(message) {
-  const encoder = tiktoken.encoding_for_model("gpt-3.5-turbo");
+  const encoder = tiktoken.encoding_for_model("gpt-4o-mini-2024-07-18");
   const tokens = encoder.encode(message);
   encoder.free();
   return tokens.length;
@@ -148,7 +148,7 @@ Analyze the provided messages to determine if they constitute a completed conver
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o-mini-2024-07-18",
         messages: [
           {
             role: "system",
@@ -199,7 +199,7 @@ app.post("/thanks", async (req, res) => {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
